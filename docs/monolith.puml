@@ -1,0 +1,32 @@
+@startuml
+!theme plain
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+skinparam shadowing false
+
+title C4 Context Diagram – Монолитное приложение
+
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+' C4 notation elements:
+' Person, System, System_Ext, Relationship, etc.
+
+Person(user, "Пользователь", "Взаимодействует с системой через веб-интерфейс")
+Person(technician, "Технический специалист", "Выезжает на объект и подключает систему отопления к монолиту")
+
+System(monolith, "Монолитное приложение", "Java + PostgreSQL", "Все компоненты в одном приложении")
+
+System_Ext(sensor, "Датчик температуры", "Отвечает на синхронные запросы, передаёт данные о температуре")
+
+' Опционально можно явно отобразить базу данных как отдельный элемент.
+System_Ext(db, "PostgreSQL", "Хранение данных\r\nЧасть монолита, но для наглядности показана отдельно")
+
+' Взаимосвязи (Relationships)
+Rel(user, monolith, "Управление отоплением, просмотр температуры (HTTP/Web)")
+Rel(technician, monolith, "Подключение системы отопления в доме")
+Rel(technician, sensor, "Настройка системы отопления в доме")
+
+Rel(monolith, sensor, "Синхронные запросы на температуру")
+Rel(monolith, db, "CRUD операции (JDBC)")
+
+@enduml

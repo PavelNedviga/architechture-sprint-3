@@ -1,0 +1,83 @@
+@startuml
+!theme plain
+
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+skinparam shadowing false
+top to bottom direction
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/devicons/postgresql.puml
+
+
+title C4 Container Diagram – Микросервисная архитектура
+
+' Акторы (внешние пользователи и роли)
+Person(user, "Пользователь", "Управляет устройствами и просматривает телеметрию")
+Person(technician, "Специалист поддержки", "Отвечает на запросы к техподдержке")
+
+
+' Внешние системы / устройства
+System_Ext(sensors, "Умные датчики", "IoT Devices", "Передают данные о температуре и других параметрах")
+
+System_Boundary(system, "Экосистема 'Тёплый дом' (To-Be)") {
+  ' API Gateway – единая точка входа во внешние вызовы
+  Container(webApp, "Web приложение", "JavaScript", "Предоставляет визуальный интерфейс", $tags="webApp")
+
+  ' API Gateway – единая точка входа во внешние вызовы
+  Container(apiGateway, "API Gateway", "Nginx / Kong / etc.", "Распределяет входящие запросы между микросервисами")
+
+  ' Сервисы
+  Container(heatingService, "Heating Service", "Java / Spring Boot", "Управление отоплением, включение/выключение, расписания")
+  Container(deviceService, "Device Management Service", "Go / Python / etc.", "Регистрация устройств, управление статусами и конфигурациями")
+  Container(telemetryService, "Telemetry Service", "Node.js / Python / etc.", "Сбор и хранение данных от датчиков, предоставление телеметрии")
+  Container(authService, "Auth Service", "Java / Keycloak / etc.", "Аутентификация, авторизация и управление доступом")
+  Container(salesService, "Sales Service", "Ruby on Rails / etc.", "Продажа модульных комплектов")
+  Container(supportService, "Support Service", "Python / etc.", "Обработка обращений в техподдержку, управление тикетами")
+
+  ' Брокер сообщений
+  Container(kafka, "Kafka", "Event Streaming Platform", "Обмен событиями между сервисами в асинхронном режиме", $sprite="apachekafka_original")
+
+  ' Базы данных (логически отдельные или физически разделенные)
+  ContainerDb(heatingDB, "Heating DB", "PostgreSQL", "Хранение расписаний, логов отопления и связанной конфигурации", $sprite="postgresql")
+  ContainerDb(deviceDB, "Device DB", "PostgreSQL", "Хранение информации об устройствах, статусах, привязках пользователей", $sprite="postgresql")
+  ContainerDb(telemetryDB, "Telemetry DB", "Time-series DB / PostgreSQL", "Хранение исторических данных датчиков, логирование", $sprite="postgresql")
+  ContainerDb(authDB, "Auth DB", "PostgreSQL", "Учетные записи, роли, токены, права доступа", $sprite="postgresql")
+  ContainerDb(salesDB, "Sales DB", "PostgreSQL", "Заказы, состав комплектов", $sprite="postgresql")
+  ContainerDb(supportDB, "Support DB", "PostgreSQL", "Хранение тикетов в техподдержку, журнал обращений", $sprite="postgresql")
+}
+
+' Связи
+Rel(user, webApp, "Использует веб-/мобильное приложение")
+Rel(user, sensors, "Настраивает подключение самостоятельно")
+Rel(technician, webApp, "Помогает в техподдержке")
+Rel(webApp, apiGateway, "Взаимодействует через")
+
+Rel(apiGateway, authService, "Запросы на аутентификацию/авторизацию")
+Rel(apiGateway, heatingService, "Запросы на включение/выключение, получение статусов")
+Rel(apiGateway, deviceService, "Запросы управления устройствами, регистрации, обновления")
+Rel(apiGateway, telemetryService, "Получение телеметрии, данных с датчиков")
+Rel(apiGateway, salesService, "Заказы на оборудование")
+Rel(apiGateway, supportService, "Обращения в техподдержку, создание и обновление тикетов")
+
+' Датчики могут напрямую отправлять данные телеметрии в Telemetry Service (через MQTT/HTTP, в реальной системе может быть IoT Gateway)
+Rel(sensors, telemetryService, "Поток данных (MQTT/HTTP)")
+
+' По необходимости, Device Management Service может управлять конфигурациями датчиков:
+Rel(deviceService, sensors, "Управление настройками, прошивками")
+
+' Пример использования Kafka
+Rel(heatingService, kafka, "Публикация событий отопления", "Pub/Sub")
+Rel(deviceService, kafka, "Публикация изменений статусов устройств", "Pub/Sub")
+Rel(telemetryService, kafka, "Подписка на события, публикация данных датчиков", "Pub/Sub")
+
+' Доступ к БД
+Rel(heatingService, heatingDB, "CRUD")
+Rel(deviceService, deviceDB, "CRUD")
+Rel(telemetryService, telemetryDB, "CRUD / Time-series Queries")
+Rel(authService, authDB, "CRUD")
+Rel(salesService, salesDB, "CRUD")
+Rel(supportService, supportDB, "CRUD")
+
+SHOW_LEGEND()
+@enduml
