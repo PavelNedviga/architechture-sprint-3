@@ -571,13 +571,180 @@ TelemetryQueryService --> TelemetryRepository : uses
 
 Добавьте сюда ER-диаграмму. Она должна отражать ключевые сущности системы, их атрибуты и тип связей между ними.
 
+```plantuml
+@startuml
+!theme plain
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+skinparam shadowing false
+
+left to right direction
+
+' Пример ER-диаграммы основных сущностей во всей системе.
+' Объединяет домены: Auth, Device, Telemetry, Heating, Sales, Support.
+
+' В PlantUML для ER диаграмм можно использовать нотацию Entity.
+' Связи: 1 -- 0..*, 1..* -- 1..*, и т.д.
+
+entity "Users" as users {
+  * id : UUID
+  --
+  username : string
+  email : string
+  password_hash : string
+  created_at : datetime
+}
+
+entity "Roles" as roles {
+  * id : UUID
+  --
+  role_name : string
+  description : string
+}
+
+entity "UserRoles" as user_roles {
+  * user_id : UUID
+  * role_id : UUID
+  --
+  assigned_at : datetime
+}
+
+entity "Devices" as devices {
+  * id : UUID
+  --
+  user_id : UUID  -- FK -> users.id (владелец по умолчанию)
+  device_type : string
+  status : string
+  installed_at : datetime
+}
+
+' Новая сущность для шаринга устройств между пользователями
+entity "DeviceShares" as device_shares {
+  * id : UUID
+  --
+  device_id : UUID  -- FK -> devices.id
+  user_id : UUID    -- FK -> users.id (пользователь, которому шарят)
+  access_level : string  -- например, read, manage, admin
+  created_at : datetime
+}
+
+entity "TelemetryRecords" as telemetry {
+  * id : UUID
+  --
+  device_id : UUID   -- FK -> devices.id
+  timestamp : datetime
+  sensor_values : json/object
+}
+
+entity "HeatingSchedules" as heating_schedules {
+  * id : UUID
+  --
+  device_id : UUID   -- FK -> devices.id (управление отопительным устройством)
+  start_time : datetime
+  end_time : datetime
+  target_temp : float
+}
+
+entity "HeatingLogs" as heating_logs {
+  * id : UUID
+  --
+  device_id : UUID   -- FK -> devices.id
+  timestamp : datetime
+  state : string       -- включено/выключено
+  current_temp : float
+}
+
+entity "Products" as products {
+  * id : UUID
+  --
+  product_name : string
+  description : text
+  price : numeric
+}
+
+entity "Orders" as orders {
+  * id : UUID
+  --
+  user_id : UUID       -- FK -> users.id
+  created_at : datetime
+  status : string
+}
+
+entity "OrderItems" as order_items {
+  * id : UUID
+  --
+  order_id : UUID      -- FK -> orders.id
+  product_id : UUID    -- FK -> products.id
+  quantity : int
+  price : numeric
+}
+
+entity "Tickets" as tickets {
+  * id : UUID
+  --
+  user_id : UUID       -- FK -> users.id
+  subject : string
+  status : string       -- new, open, resolved, etc.
+  created_at : datetime
+}
+
+entity "TicketMessages" as ticket_messages {
+  * id : UUID
+  --
+  ticket_id : UUID    -- FK -> tickets.id
+  author_id : UUID    -- может быть user.id или technician?
+  message_body : text
+  created_at : datetime
+}
+
+' Описываем связи.
+
+' Связь между пользователями и ролями через таблицу user_roles
+users ||--|{ user_roles : "has"
+roles ||--|{ user_roles : "assigned"
+
+' Один пользователь может иметь много устройств (основное владение)
+users ||--|{ devices : "owns"
+
+' Одно устройство может иметь много записей телеметрии
+devices ||--|{ telemetry : "generates"
+
+' Устройство может иметь много расписаний и логов отопления
+devices }|--|{ heating_schedules : "has"
+devices ||--|{ heating_logs : "records"
+
+' Один пользователь может сделать много заказов
+users ||--|{ orders : "places"
+
+' В одном заказе много OrderItems, а каждый OrderItem ссылается на один product
+orders ||--|{ order_items : "contains"
+products ||--|{ order_items : "described in"
+
+' Один пользователь может иметь много тикетов
+users ||--|{ tickets : "creates"
+
+' В одном тикете может быть несколько сообщений
+tickets ||--|{ ticket_messages : "includes"
+
+' Новая связь для шеринга устройств
+' Устройство может быть зашарено нескольким пользователям
+' Один пользователь может иметь несколько зашаренных устройств
+
+users ||--|{ device_shares : "has shared devices"
+devices ||--|{ device_shares : "is shared with"
+
+@enduml
+```
+
+
+
 Четвёртое задание — дополнительное. Его можно сделать по желанию. Чтобы ревьюер быстрее проверил ваше решение, укажите, сделали вы это задание или нет. Для этого оставьте нужный эмодзи около заголовка задания:
 
 ✅ — вы выполнили задание.
 
 ❌ — вы пропустили задание.
 
-# ✅ ❌ Задание 4. Создание и документирование API
+# ❌ Задание 4. Создание и документирование API
 
 ### 1. Тип API
 
